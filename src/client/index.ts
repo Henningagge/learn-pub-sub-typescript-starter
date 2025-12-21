@@ -49,13 +49,6 @@ async function main() {
       routingKey,
       SimpleQueueType.Durable
     );
-    declareAndBind(
-      conn,
-      ExchangePerilDLX,
-      queueName,
-      routingKey,
-      SimpleQueueType.Durable
-    );
 
     const gamestate = new GameState(username);
 
@@ -64,7 +57,7 @@ async function main() {
       ExchangePerilDirect,
       queueName,
       PauseKey,
-      SimpleQueue,
+      SimpleQueueType.Durable,
       handlerPause(gamestate)
     );
     await subscribeJSON(
@@ -72,7 +65,7 @@ async function main() {
       ExchangePerilTopic,
       `army_moves.${username}`,
       'army_moves.*',
-      SimpleQueue,
+      SimpleQueueType.Durable,
       handlerMove(gamestate)
     );
     process.stdout.write('> ');

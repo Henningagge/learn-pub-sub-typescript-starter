@@ -1,6 +1,7 @@
 import amqp, { type ConfirmChannel } from 'amqplib';
 import process from 'node:process';
 import { publishJSON } from '../internal/pubsub/publishJson.js';
+import { SimpleQueueType } from '../internal/pubsub/binding.js';
 import {
   ExchangePerilDirect,
   ExchangePerilTopic,
@@ -28,7 +29,7 @@ async function main() {
       ExchangePerilTopic,
       GameLogSlug,
       GameLogSlug + '.*',
-      SimpleQueue
+      SimpleQueueType.Durable
     );
     while (1 == 1) {
       let input = await getInput();

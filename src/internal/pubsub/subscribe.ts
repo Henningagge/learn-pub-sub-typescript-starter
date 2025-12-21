@@ -1,5 +1,5 @@
 import amqp from 'amqplib';
-import type { SimpleQueueType } from '../../client/index.js';
+import { SimpleQueueType } from './binding.js';
 import { declareAndBind } from './binding.js';
 export enum AckType {
   Ack,
