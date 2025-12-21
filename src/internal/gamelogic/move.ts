@@ -4,8 +4,8 @@ import {
   type Location,
   type Player,
   type Unit,
-} from "./gamedata.js";
-import { GameState } from "./gamestate.js";
+} from './gamedata.js';
+import { GameState } from './gamestate.js';
 
 export enum MoveOutcome {
   SamePlayer,
@@ -29,7 +29,7 @@ export function getOverlappingLocation(
 
 export function handleMove(gs: GameState, move: ArmyMove): MoveOutcome {
   console.log();
-  console.log("==== Move Detected ====");
+  console.log('==== Move Detected ====');
   console.log(
     `${move.player.username} is moving ${move.units.length} unit(s) to ${move.toLocation}`
   );
@@ -40,7 +40,7 @@ export function handleMove(gs: GameState, move: ArmyMove): MoveOutcome {
   const player = gs.getPlayerSnap();
 
   if (player.username === move.player.username) {
-    console.log("------------------------");
+    console.log('------------------------');
     return MoveOutcome.SamePlayer;
   }
 
@@ -49,22 +49,23 @@ export function handleMove(gs: GameState, move: ArmyMove): MoveOutcome {
     console.log(
       `You have units in ${overlappingLocation}! You are at war with ${move.player.username}!`
     );
-    console.log("------------------------");
+    console.log('------------------------');
+
     return MoveOutcome.MakeWar;
   }
 
   console.log(`You are safe from ${move.player.username}'s units.`);
-  console.log("------------------------");
+  console.log('------------------------');
   return MoveOutcome.Safe;
 }
 
 export function commandMove(gs: GameState, words: string[]): ArmyMove {
   if (gs.isPaused()) {
-    throw new Error("The game is paused, you cannot move units");
+    throw new Error('The game is paused, you cannot move units');
   }
 
   if (words.length < 3) {
-    throw new Error("Usage: move <location> <unitID> <unitID> ...");
+    throw new Error('Usage: move <location> <unitID> <unitID> ...');
   }
 
   const newLocation = words[1];
