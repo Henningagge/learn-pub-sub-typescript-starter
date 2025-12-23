@@ -1,12 +1,16 @@
-import amqp, { type ConfirmChannel } from 'amqplib';
-import type { Channel } from 'amqplib';
+import amqp, { type Channel } from 'amqplib';
 
-import { ExchangePerilDLX } from '../routing/routing.js';
-import { channel } from 'diagnostics_channel';
+export enum AckType {
+  Ack,
+  NackDiscard,
+  NackRequeue,
+}
+
 export enum SimpleQueueType {
   Durable,
   Transient,
 }
+
 export async function declareAndBind(
   conn: amqp.ChannelModel,
   exchange: string,
@@ -14,21 +18,72 @@ export async function declareAndBind(
   key: string,
   queueType: SimpleQueueType
 ): Promise<[Channel, amqp.Replies.AssertQueue]> {
-  try {
-    let newChannel = await conn.createChannel();
+  const ch = await conn.createChannel();
 
-    const queue = await newChannel.assertQueue(queueName, {
-      durable: queueType === SimpleQueueType.Durable,
-      exclusive: queueType !== SimpleQueueType.Durable,
-      autoDelete: queueType !== SimpleQueueType.Durable,
-      arguments: {
-        'x-dead-letter-exchange': 'peril_dlx',
-      },
-    });
-    await newChannel.bindQueue(queue.queue, exchange, key);
+  const queue = await ch.assertQueue(queueName, {
+    durable: queueType === SimpleQueueType.Durable,
+    exclusive: queueType !== SimpleQueueType.Durable,
+    autoDelete: queueType !== SimpleQueueType.Durable,
+    arguments: {
+      'x-dead-letter-exchange': 'peril_dlx',
+    },
+  });
 
-    return [newChannel, queue];
-  } catch (e) {
-    throw new Error('fuck you error');
-  }
+  await ch.bindQueue(queue.queue, exchange, key);
+  return [ch, queue];
+}
+
+export async function subscribeJSON<T>(
+  conn: amqp.ChannelModel,
+  exchange: string,
+  queueName: string,
+  key: string,
+  queueType: SimpleQueueType,
+  handler: (data: T) => AckType
+): Promise<void> {
+  const [ch, queue] = await declareAndBind(
+    conn,
+    exchange,
+    queueName,
+    key,
+    queueType
+  );
+
+  await ch.consume(queue.queue, function (msg: amqp.ConsumeMessage | null) {
+    if (!msg) return;
+
+    let data: T;
+    try {
+      data = JSON.parse(msg.content.toString());
+    } catch (err) {
+      console.error('Could not unmarshal message:', err);
+      return;
+    }
+
+    try {
+      const result = handler(data);
+      switch (result) {
+        case AckType.Ack:
+          ch.ack(msg);
+          console.log('Ack');
+          break;
+        case AckType.NackDiscard:
+          ch.nack(msg, false, false);
+          console.log('NackDiscard');
+          break;
+        case AckType.NackRequeue:
+          ch.nack(msg, false, true);
+          console.log('NackRequeue');
+          break;
+        default:
+          const unreachable: never = result;
+          console.error('Unexpected ack type:', unreachable);
+          return;
+      }
+    } catch (err) {
+      console.error('Error handling message:', err);
+      ch.nack(msg, false, false);
+      return;
+    }
+  });
 }
